@@ -1,19 +1,9 @@
-"""
-Manim Animation: Fourier Transforms of Periodic Functions
-This script creates animated visualizations of how periodic functions 
-can be decomposed and reconstructed using their Fourier series.
 
-Usage:
-    python fourier_animation.py
-    
-The script will prompt you to select a periodic function and then render
-the animation, saving it as an MP4 file in the current directory.
-"""
-
+from tkinter import LEFT, RIGHT
 from manim import *
 from scipy.integrate import quad
 import numpy as np
-from typing import Callable, Tuple, List
+from typing import Callable, Text, Tuple, List
 import sys
 import os
 from pathlib import Path
@@ -44,24 +34,21 @@ class FourierSeriesCalculator:
         Returns:
             Tuple of (a0, a_coefficients, b_coefficients)
         """
-        # Calculate a₀
+        # anot calculation
         a0_integral, _ = quad(self.func, 0, self.period)
         a0 = (2 / self.period) * a0_integral
         
         a_coefficients = []
         b_coefficients = []
         
-        # Calculate aₙ and bₙ
         for n in range(1, n_terms + 1):
-            # aₙ coefficient
             def an_integrand(x):
                 return self.func(x) * np.cos(2 * n * np.pi * x / self.period)
-            
+            #coeff an
             an_integral, _ = quad(an_integrand, 0, self.period)
             an = (2 / self.period) * an_integral
             a_coefficients.append(an)
-            
-            # bₙ coefficient
+            #coeff bn
             def bn_integrand(x):
                 return self.func(x) * np.sin(2 * n * np.pi * x / self.period)
             
@@ -116,19 +103,15 @@ class FourierTransformAnimation(Scene):
     """Animate the Fourier transform of a periodic function."""
     
     def construct(self):
-        # Configuration
         self.camera.background_color = WHITE
         
-        # Get function choice from environment variable
         import os
         func_choice = os.environ.get('FOURIER_FUNC_CHOICE', '1')
         n_harmonics = int(os.environ.get('FOURIER_N_HARMONICS', '10'))
         function_name = os.environ.get('FOURIER_FUNC_NAME', 'Function')
         
-        # Get the predefined functions
         functions = get_predefined_functions()
         
-        # Select the function
         if func_choice in functions:
             func = functions[func_choice]["func"]
             function_name = functions[func_choice]["name"]
@@ -138,82 +121,66 @@ class FourierTransformAnimation(Scene):
         
         period = 2 * PI
         
-        # Create calculator
         calculator = FourierSeriesCalculator(func, period)
         a0, a_coeffs, b_coeffs = calculator.calculate_fourier_coefficients(n_harmonics)
         
-        # Create axes for the original function
         axes_original = Axes(
             x_range=[0, 2 * PI, PI/2],
             y_range=[-1.5, 1.5, 0.5],
             axis_config={"color": GREY_B},
             tips=False,
         )
-        axes_original.scale(0.6)  # Scale down to fit on screen
-        
-        # Create axes for frequency spectrum
-        # Use max 50 harmonics for x-axis, or n_harmonics if larger
+        axes_original.scale(0.6)
+
         max_harmonics = max(50, n_harmonics)
         axes_spectrum = Axes(
-            x_range=[0, max_harmonics, 5],  # Step of 5 for cleaner labels
+            x_range=[0, max_harmonics, 5], 
             y_range=[0, 1.2, 0.2],
             axis_config={"color": GREY_B},
             tips=False,
         )
         axes_spectrum.scale(0.6)  # Scale down to fit on screen
         
-        # Position the axes
         axes_original.to_edge(LEFT)
         axes_spectrum.to_edge(RIGHT)
         
-        # Create labels
         label_original = Text("Original Function", font_size=24, color=BLACK)
         label_original.next_to(axes_original, UP)
         
         label_spectrum = Text("Frequency Spectrum", font_size=24, color=BLACK)
         label_spectrum.next_to(axes_spectrum, UP)
         
-        # Draw original function
         original_func = axes_original.plot(func, color=BLUE, stroke_width=2.5)
         
         self.add(axes_original, axes_spectrum, label_original, label_spectrum)
         self.play(Create(original_func))
         self.wait(1)
         
-        # Animate the buildup of Fourier series
         fourier_curves = []
         spectrum_bars = []
         
         for harmonic in range(1, n_harmonics + 1):
-            # Calculate current approximation
             current_a_coeffs = a_coeffs[:harmonic]
             current_b_coeffs = b_coeffs[:harmonic]
             
             def fourier_func(x):
                 return calculator.fourier_approximation(x, a0, current_a_coeffs, current_b_coeffs)
             
-            # Plot Fourier approximation
             fourier_curve = axes_original.plot(fourier_func, color=RED, stroke_width=2.5)
             
-            # Calculate magnitude spectrum (amplitude of each harmonic)
             magnitude = np.sqrt(a_coeffs[harmonic-1]**2 + b_coeffs[harmonic-1]**2)
             
-            # Create spectrum bar using a simple scale
-            bar_height = magnitude / 2  # Scale for visibility
+            bar_height = magnitude / 2  
             
-            # Use rectangles for clearer bars
-            # Height is set to a fixed proportion for visual clarity
             bar = Rectangle(
                 width=0.3,
-                height=0.5,  # Fixed height works well for all Manim versions
+                height=0.5,  
                 color=GREEN,
                 fill_opacity=0.7,
             )
-            # Scale the bar to match the magnitude
-            bar.scale(bar_height / 0.5)  # Scale relative to the base height
+            bar.scale(bar_height / 0.5)  
             bar.move_to(axes_spectrum.coords_to_point(harmonic, bar_height / 2))
             
-            # Animate the addition
             if harmonic == 1:
                 self.play(
                     Transform(original_func, fourier_curve),
@@ -233,7 +200,6 @@ class FourierTransformAnimation(Scene):
         
         self.wait(2)
         
-        # Add annotation
         annotation = Text(
             f"{function_name} - Fourier Series with {n_harmonics} Harmonics",
             font_size=20,
@@ -294,10 +260,8 @@ def get_custom_function():
                 print("Function cannot be empty.")
                 continue
             
-            # Evaluate the function
             func = eval(func_str)
             
-            # Test it
             test_val = func(0)
             if not isinstance(test_val, (int, float, np.number)):
                 print("Function must return numeric values.")
@@ -332,55 +296,43 @@ def render_animation(func, func_name, n_harmonics):
     print(f"\nPreparing to render: {func_name} with {n_harmonics} harmonics...")
     print("This may take a minute or two...\n")
     
-    # Set environment variables to pass to the Manim subprocess
     import os
     
-    # Find which function was selected
     functions = get_predefined_functions()
-    func_choice = "1"  # default
+    func_choice = "1"  
     for key, func_info in functions.items():
         if func_info["name"] == func_name:
             func_choice = key
             break
     
-    # Create environment with our settings
     env = os.environ.copy()
     env['FOURIER_FUNC_CHOICE'] = func_choice
     env['FOURIER_N_HARMONICS'] = str(n_harmonics)
     env['FOURIER_FUNC_NAME'] = func_name
     
-    # Create output filename
     output_file = f"fourier_{func_name.replace(' ', '_')}"
     
-    # Get the full path to this script
     script_path = os.path.abspath(__file__)
     
-    # Build the manim command with CORRECT syntax
-    # Quality options: -ql (low), -qm (medium), -qh (high), -qp (4K), -qk (4K high fps)
-    # IMPORTANT: Use ONLY ONE quality flag (e.g., -qm NOT -qlm)
     command = [
         "manim",
-        "-qm",  # Medium quality - use this ONLY (not combined with other quality flags)
+        "-qm",  
         "--output_file", output_file,
-        script_path,  # Use full path to the script
+        script_path,  
         "FourierTransformAnimation"
     ]
     
     print(f"Running command: manim -qm --output_file {output_file} {script_path} FourierTransformAnimation\n")
     
     try:
-        # Run manim with environment variables
         result = subprocess.run(command, capture_output=False, text=True, env=env)
         
         if result.returncode == 0:
-            # Look for the generated video
             current_dir = Path(os.getcwd())
             media_videos_dir = current_dir / "media" / "videos" / "1080p30"
             
-            # The video file should be at media/videos/1080p30/[output_file].mp4
             if media_videos_dir.exists():
                 for video_file in media_videos_dir.glob(f"{output_file}*.mp4"):
-                    # Copy to working directory
                     final_path = current_dir / f"{output_file}.mp4"
                     import shutil
                     shutil.copy(str(video_file), str(final_path))
@@ -391,7 +343,6 @@ def render_animation(func, func_name, n_harmonics):
                     print(f"{'='*60}\n")
                     return
             
-            # If we get here, look in media folder
             print(f"\n{'='*60}")
             print("✓ Animation rendering completed!")
             print(f"{'='*60}")
@@ -433,13 +384,10 @@ def main():
             func = func_info["func"]
             func_name = func_info["name"]
         
-        # Get number of harmonics
         n_harmonics = get_num_harmonics()
         
-        # Render the animation
         render_animation(func, func_name, n_harmonics)
         
-        # Ask if user wants to continue
         again = input("\nRender another animation? (y/n): ").strip().lower()
         if again != "y":
             print("\nGoodbye!")
