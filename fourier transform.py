@@ -1,9 +1,7 @@
-
-from tkinter import LEFT, RIGHT
 from manim import *
 from scipy.integrate import quad
 import numpy as np
-from typing import Callable, Text, Tuple, List
+from typing import Callable, Tuple, List
 import sys
 import os
 from pathlib import Path
@@ -11,30 +9,12 @@ import subprocess
 
 
 class FourierSeriesCalculator:
-    """Calculate Fourier series coefficients for periodic functions."""
     
     def __init__(self, func: Callable, period: float = 2 * PI):
-        """
-        Initialize the calculator.
-        
-        Args:
-            func: The periodic function to analyze
-            period: The period of the function (default: 2π)
-        """
         self.func = func
         self.period = period
     
     def calculate_fourier_coefficients(self, n_terms: int) -> Tuple[float, List[float], List[float]]:
-        """
-        Calculate a₀, aₙ, and bₙ coefficients.
-        
-        Args:
-            n_terms: Number of terms to calculate
-            
-        Returns:
-            Tuple of (a0, a_coefficients, b_coefficients)
-        """
-        # anot calculation
         a0_integral, _ = quad(self.func, 0, self.period)
         a0 = (2 / self.period) * a0_integral
         
@@ -44,11 +24,11 @@ class FourierSeriesCalculator:
         for n in range(1, n_terms + 1):
             def an_integrand(x):
                 return self.func(x) * np.cos(2 * n * np.pi * x / self.period)
-            #coeff an
+            
             an_integral, _ = quad(an_integrand, 0, self.period)
             an = (2 / self.period) * an_integral
             a_coefficients.append(an)
-            #coeff bn
+            
             def bn_integrand(x):
                 return self.func(x) * np.sin(2 * n * np.pi * x / self.period)
             
@@ -59,9 +39,6 @@ class FourierSeriesCalculator:
         return a0, a_coefficients, b_coefficients
     
     def fourier_approximation(self, x: float, a0: float, a_coeffs: List[float], b_coeffs: List[float]) -> float:
-        """
-        Calculate the Fourier series approximation at point x.
-        """
         result = a0 / 2
         for n, (an, bn) in enumerate(zip(a_coeffs, b_coeffs), 1):
             result += an * np.cos(2 * n * np.pi * x / self.period) + \
@@ -70,7 +47,6 @@ class FourierSeriesCalculator:
 
 
 def get_predefined_functions():
-    """Return a dictionary of predefined periodic functions."""
     return {
         "1": {
             "name": "Square Wave",
@@ -100,7 +76,6 @@ def get_predefined_functions():
 
 
 class FourierTransformAnimation(Scene):
-    """Animate the Fourier transform of a periodic function."""
     
     def construct(self):
         self.camera.background_color = WHITE
@@ -131,15 +106,15 @@ class FourierTransformAnimation(Scene):
             tips=False,
         )
         axes_original.scale(0.6)
-
+        
         max_harmonics = max(50, n_harmonics)
         axes_spectrum = Axes(
-            x_range=[0, max_harmonics, 5], 
+            x_range=[0, max_harmonics, 5],
             y_range=[0, 1.2, 0.2],
             axis_config={"color": GREY_B},
             tips=False,
         )
-        axes_spectrum.scale(0.6)  # Scale down to fit on screen
+        axes_spectrum.scale(0.6)
         
         axes_original.to_edge(LEFT)
         axes_spectrum.to_edge(RIGHT)
@@ -170,15 +145,15 @@ class FourierTransformAnimation(Scene):
             
             magnitude = np.sqrt(a_coeffs[harmonic-1]**2 + b_coeffs[harmonic-1]**2)
             
-            bar_height = magnitude / 2  
+            bar_height = magnitude / 2
             
             bar = Rectangle(
                 width=0.3,
-                height=0.5,  
+                height=0.5,
                 color=GREEN,
                 fill_opacity=0.7,
             )
-            bar.scale(bar_height / 0.5)  
+            bar.scale(bar_height / 0.5)
             bar.move_to(axes_spectrum.coords_to_point(harmonic, bar_height / 2))
             
             if harmonic == 1:
@@ -211,7 +186,6 @@ class FourierTransformAnimation(Scene):
 
 
 def display_menu():
-    """Display the menu of available functions."""
     print("\n" + "="*60)
     print("FOURIER SERIES ANIMATOR".center(60))
     print("="*60)
@@ -227,7 +201,6 @@ def display_menu():
 
 
 def get_user_choice():
-    """Get the user's menu choice."""
     while True:
         try:
             choice = input("\nEnter your choice (0-7): ").strip()
@@ -241,7 +214,6 @@ def get_user_choice():
 
 
 def get_custom_function():
-    """Allow user to input a custom periodic function."""
     print("\n" + "-"*60)
     print("CUSTOM FUNCTION INPUT")
     print("-"*60)
@@ -260,7 +232,21 @@ def get_custom_function():
                 print("Function cannot be empty.")
                 continue
             
-            func = eval(func_str)
+            safe_dict = {
+                'np': np,
+                'sin': np.sin,
+                'cos': np.cos,
+                'tan': np.tan,
+                'exp': np.exp,
+                'log': np.log,
+                'sqrt': np.sqrt,
+                'abs': abs,
+                'max': max,
+                'min': min,
+                'pi': np.pi,
+            }
+            
+            func = eval(func_str, {"__builtins__": {}}, safe_dict)
             
             test_val = func(0)
             if not isinstance(test_val, (int, float, np.number)):
@@ -279,7 +265,6 @@ def get_custom_function():
 
 
 def get_num_harmonics():
-    """Get the number of harmonics from the user."""
     while True:
         try:
             num = int(input("\nEnter number of harmonics to display (1-50, default=10): ").strip() or "10")
@@ -292,14 +277,13 @@ def get_num_harmonics():
 
 
 def render_animation(func, func_name, n_harmonics):
-    """Render the Fourier animation using Manim."""
     print(f"\nPreparing to render: {func_name} with {n_harmonics} harmonics...")
     print("This may take a minute or two...\n")
     
     import os
     
     functions = get_predefined_functions()
-    func_choice = "1"  
+    func_choice = "1"
     for key, func_info in functions.items():
         if func_info["name"] == func_name:
             func_choice = key
@@ -316,9 +300,9 @@ def render_animation(func, func_name, n_harmonics):
     
     command = [
         "manim",
-        "-qm",  
+        "-qm",
         "--output_file", output_file,
-        script_path,  
+        script_path,
         "FourierTransformAnimation"
     ]
     
@@ -367,7 +351,6 @@ def render_animation(func, func_name, n_harmonics):
 
 
 def main():
-    """Main function to run the Fourier animation tool."""
     while True:
         display_menu()
         choice = get_user_choice()
